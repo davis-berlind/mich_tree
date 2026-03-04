@@ -123,7 +123,8 @@ for (j in 1:nrow(settings)) {
   #### treeSeg ####
   # fit model and time process
   time <- system.time({
-    fit <- treeSeg(tree_data$y, tree_data$tree, alpha = 1 - level, fam = "gauss")
+    fit <- treeSeg(tree_data$y, tree_data$tree, alpha = 1 - level, 
+                   fam = "gauss", lengths = "dyadic")
     })[3]
   
   # calculate mean/precision signal MSEs
