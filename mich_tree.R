@@ -231,8 +231,8 @@ mich_tree <- function(y, edges,
           b_bar_l <- fit$b_bar_l
           omega_bar_l <- fit$omega_bar_l
         }
-
-        while (!merged) {
+        
+        while (!merged & L > 0) {
           fit <- mich_tree_cpp(y, edges, L, fit_intercept, fit_scale, tol, max_iter,
                                verbose = FALSE, log_pi_l, omega_l, mu_0, lambda_0,
                                b_bar_l, omega_bar_l, pi_bar_l, log_pi_bar_l)

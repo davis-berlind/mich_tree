@@ -79,8 +79,8 @@ for (j in 1:nrow(settings)) {
   result[nrow(result) + 1,"method"] <- "MICH Auto"
   result[nrow(result),-1] <- c(n, L, min_space, time, fit$L, L_est, n_detected,
                                n_covered, avg_len, mean_mse,
-                               tree_hausdorff(true_cp, est_cp, tree_data$tree, n), 
-                               tree_hausdorff(est_cp, true_cp, tree_data$tree, n))
+                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree, n), 
+                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree, n))
   
   #### MICH Oracle ####
   # fit model and time process
@@ -117,8 +117,8 @@ for (j in 1:nrow(settings)) {
   result[nrow(result) + 1,"method"] <- "MICH Ora"
   result[nrow(result),-1] <- c(n, L, min_space, time, fit$L, L_est, n_detected,
                                n_covered, avg_len, mean_mse,
-                               tree_hausdorff(true_cp, est_cp, tree_data$tree, n), 
-                               tree_hausdorff(est_cp, true_cp, tree_data$tree, n))
+                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree, n), 
+                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree, n))
   
   #### treeSeg ####
   # fit model and time process
@@ -146,8 +146,8 @@ for (j in 1:nrow(settings)) {
   result[nrow(result) + 1,"method"] <- "treeSeg"
   result[nrow(result),-1] <- c(n, L, min_space, time, NA, L_est, n_detected,
                                n_covered, NA, mean_mse,
-                               tree_hausdorff(true_cp, est_cp, tree_data$tree, n), 
-                               tree_hausdorff(est_cp, true_cp, tree_data$tree, n))
+                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree, n), 
+                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree, n))
 }
 
 write.csv(result, paste0("./results/result_",jobid,".csv"), row.names = FALSE)

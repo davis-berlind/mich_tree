@@ -22,6 +22,7 @@ cd ~/mich_tree
 # load the job environment:
 . /u/local/Modules/default/init/modules.sh
 module load R/4.2.2
+module load gcc/10.2.0
 
 ## Run code 
 echo '/usr/bin/time -v Rscript ./tree_simulation_batch_job.R > ./output/output.$SGE_TASK_ID 2>&1' 
