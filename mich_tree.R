@@ -30,8 +30,8 @@ mich_tree <- function(y, edges,
   
   #### standardize data ####
   if (standardize) {
-    center <- stats::median(y)
-    scale <- stats::IQR(y)
+    center <- mean(y)
+    scale <- sd(y)
     y <- (y - center) / scale
   }
   

@@ -6,7 +6,7 @@ Rcpp::sourceCpp("mich_tree.cpp")
 jobid = as.integer(Sys.getenv("SGE_TASK_ID"))
 set.seed(jobid)
 
-# change-point packages
+# tree packages
 cp_pkgs <- c("treeSeg", "ape")
 lapply(cp_pkgs, require, character.only = TRUE)
 
