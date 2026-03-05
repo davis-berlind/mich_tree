@@ -151,6 +151,10 @@ void mu_bar_update(TreeNode* node,
     mu2_bar(node->id, l) = node->mu2;
     //*(node->r_bar) -= node->mu;
   } else {
+    if (node->parent == nullptr) {
+      node->mu = 0.0;
+      node->mu2 = 0.0;
+    }
     node->mu += b_bar[node->id] * pi_bar[node->id];
     node->mu2 += (1 / omega_bar[node->id] + b_bar[node->id] * b_bar[node->id]) * pi_bar[node->id];
     node->left->mu = node->mu;
@@ -254,8 +258,6 @@ NumericVector tree_vb(TreeNode* tree,
       pi_bar_l(_, l) = pi_bar;
       log_pi_bar_l(_, l) = log_pi_bar;
 
-      tree->mu = 0.0;
-      tree->mu2 = 0.0;
       mu_bar_update(tree, mu_bar_l, mu2_bar_l, l, b_bar, omega_bar, pi_bar);
 
       r_bar += -mu_bar_l(_, l);
@@ -274,14 +276,6 @@ NumericVector tree_vb(TreeNode* tree,
 
     iter++;
     elbo.push_back(0.0);
-    Rcout << "lambda_0:" << *lambda_0 << ";\n";
-    if (any(is_nan(r_bar))) Rcout << "r_bar:" << r_bar << ";\n";
-    if (any(is_nan(delta))) Rcout << "delta:" << delta << ";\n";
-    if (any(is_nan(b_bar_l))) Rcout << "b_bar_l:" << b_bar_l << ";\n";
-    if (any(is_nan(omega_bar_l))) Rcout << "omega_bar_l:" << omega_bar_l << ";\n";
-    if (any(is_nan(pi_bar_l))) Rcout << "pi_bar_l:" << pi_bar_l << ";\n";
-    if (any(is_nan(log_pi_bar_l))) Rcout << "log_pi_bar_l:" << log_pi_bar_l << ";\n";
-    if (any(is_nan(log_pi_l))) Rcout << "log_pi_l:" << log_pi_l << ";\n";
     
     elbo[iter] = elbo_fn(*lambda_0, r_bar, delta, b_bar_l, omega_bar_l, pi_bar_l,
                          log_pi_bar_l, log_pi_l, omega_l, log_omega_l);
@@ -552,13 +546,11 @@ List mich_tree_cpp(NumericVector y,
   
   TreeNode* tree = buildTree(r_bar, delta, &lambda_0, edges);
 
-  for (int l = 0; l < L; l++) {
-    mu_bar_update(tree, mu_bar_l, mu2_bar_l, l, b_bar_l(_,l), omega_bar_l(_,l), pi_bar_l(_,l));
-  }
-
   for (int i=0; i < n_leaf; i++) {
     r_bar[i] -= mu_0;
     for (int l=0; l < L; l++) {
+      mu_bar_update(tree, mu_bar_l, mu2_bar_l, l, b_bar_l(_,l), omega_bar_l(_,l), pi_bar_l(_,l));
+      
       r_bar[i] -= mu_bar_l(i, l);
       delta[i] += mu2_bar_l(i, l) - mu_bar_l(i, l) * mu_bar_l(i, l);
     }
@@ -587,7 +579,9 @@ List mich_tree_cpp(NumericVector y,
   for (int l = 0; l < L; l++) {
     r_bar += mu_bar_l(_,l);
     delta += mu_bar_l(_,l) * mu_bar_l(_,l) - mu2_bar_l(_,l);
+    
     mu_bar_update(tree, mu_bar_l, mu2_bar_l, l, b_bar_l(_,l), omega_bar_l(_,l), pi_bar_l(_,l));
+    
     r_bar += -mu_bar_l(_,l);
     delta += mu2_bar_l(_,l) - mu_bar_l(_,l) * mu_bar_l(_,l);
   }
@@ -617,7 +611,9 @@ List mich_tree_cpp(NumericVector y,
   for (int l = 0; l < L; l++) {
     r_bar += mu_bar_l(_,l);
     delta += mu_bar_l(_,l) * mu_bar_l(_,l) - mu2_bar_l(_,l);
+    
     mu_bar_update(tree, mu_bar_l, mu2_bar_l, l, b_bar_l(_,l), omega_bar_l(_,l), pi_bar_l(_,l));
+    
     r_bar += -mu_bar_l(_,l);
     delta += mu2_bar_l(_,l) - mu_bar_l(_,l) * mu_bar_l(_,l);
   }
