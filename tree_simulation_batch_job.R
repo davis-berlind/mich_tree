@@ -49,7 +49,7 @@ for (j in 1:nrow(settings)) {
   time <- system.time({
     fit <- mich_tree(tree_data$y, tree_data$tree$edge, L_auto = TRUE, tol = tol, 
                      fit_intercept = TRUE, fit_scale = TRUE, standardize = TRUE,
-                     max_iter = Inf, restart = TRUE, omega_l = omega_l, verbose = TRUE)
+                     max_iter = Inf, restart = TRUE, omega_l = omega_l)
     })[3]
   
   # calculate mean/precision signal MSEs
@@ -87,7 +87,7 @@ for (j in 1:nrow(settings)) {
   time <- system.time({
     fit <- mich_tree(tree_data$y, tree_data$tree$edge, L = L, tol = tol, 
                      fit_intercept = TRUE, fit_scale = TRUE, standardize = TRUE, 
-                     max_iter = Inf, restart = TRUE, omega_l = omega_l, verbose = TRUE)
+                     max_iter = Inf, restart = TRUE, omega_l = omega_l)
     })[3]
   
   # calculate mean/precision signal MSEs

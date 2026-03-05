@@ -5,7 +5,7 @@
 #$ -o joblog.$JOB_ID.$TASK_ID
 #$ -j y
 ## Job resource details:
-#$ -l h_rt=6:00:00,h_data=4G
+#$ -l h_rt=10:00:00,h_data=4G
 # Email address to notify
 #$ -M $USER@mail
 # Notify when
@@ -21,8 +21,8 @@ cd ~/mich_tree
 
 # load the job environment:
 . /u/local/Modules/default/init/modules.sh
+module load gcc/8.3.0
 module load R/4.2.2
-module load gcc/10.2.0
 
 ## Run code 
 echo '/usr/bin/time -v Rscript ./tree_simulation_batch_job.R > ./output/output.$SGE_TASK_ID 2>&1' 
