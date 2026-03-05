@@ -52,9 +52,8 @@ TreeNode* buildTree(NumericVector r_bar,
   for (auto& kv : nodes) {
     TreeNode* node = kv.second;
     if (node->left == nullptr && node->right == nullptr) {
-      node->id += n_leaf; // leaf ids go from 0:(n_leaf - 1)
-      node->r_bar = &r_bar[node->id];
-      node->delta = &delta[node->id];
+      node->r_bar = &r_bar[node->id + n_leaf];
+      node->delta = &delta[node->id + n_leaf];
       node->scale = lambda;
     } else if (node->parent == nullptr) {
       root = node->id;
@@ -147,8 +146,9 @@ void mu_bar_update(TreeNode* node,
                    NumericVector pi_bar) {
 
   if (node->left == nullptr && node->right == nullptr) {
-    mu_bar(node->id, l) = node->mu;
-    mu2_bar(node->id, l) = node->mu2;
+    int n_leaf = mu_bar.nrow();
+    mu_bar(node->id + n_leaf, l) = node->mu;
+    mu2_bar(node->id + n_leaf, l) = node->mu2;
     //*(node->r_bar) -= node->mu;
   } else {
     if (node->parent == nullptr) {
@@ -455,7 +455,10 @@ void merge_reset(TreeNode* node,
       log_pi_bar(node->id, right_dex) = log_pi_tmp;
 
       for (int i = 0; i < active.length(); i++) {
-        if (node->left->id == active[i] || node->left->left->id == active[i] || node->left->right->id == active[i]) {
+        if (node->left->id == active[i] || 
+            (node->left->left  != nullptr && node->left->left->id  == active[i]) || 
+            (node->left->right != nullptr && node->left->right->id == active[i])) 
+        {
           active[i] = -1;
           b_bar(_, i) = NumericVector(b_bar.nrow(), 0.0);
           pi_bar(_, i) = NumericVector(pi_bar.nrow(), 1.0 / pi_bar.nrow());
@@ -487,7 +490,10 @@ void merge_reset(TreeNode* node,
       log_pi_bar(node->id, left_dex) = log_pi_tmp;
 
       for (int i = 0; i < active.length(); i++) {
-        if (node->right->id == active[i] || node->right->left->id == active[i] || node->right->right->id == active[i]) {
+        if (node->right->id == active[i] || 
+            (node->right->left  != nullptr && node->right->left->id  == active[i]) || 
+            (node->right->right != nullptr && node->right->right->id == active[i])) 
+        {
           active[i] = -1;
           b_bar(_, i) = NumericVector(b_bar.nrow(), 0.0);
           pi_bar(_, i) = NumericVector(pi_bar.nrow(), 1.0 / pi_bar.nrow());
