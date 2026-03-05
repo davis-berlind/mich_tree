@@ -38,7 +38,7 @@ for (j in 1:nrow(settings)) {
   n <- settings$n[j]; L <- settings$L[j]; min_space <- settings$min_space[j];
 
   # generate data
-  tree_data <- tree_sim(n, L, min_space, C = 200, sd = 1) 
+  tree_data <- tree_sim(n, L, min_space, C = 200, sd = 1)
   true_cp <- tree_data$active_nodes
   
   # detection threshold
@@ -49,7 +49,7 @@ for (j in 1:nrow(settings)) {
   time <- system.time({
     fit <- mich_tree(tree_data$y, tree_data$tree$edge, L_auto = TRUE, tol = tol, 
                      fit_intercept = TRUE, fit_scale = TRUE, standardize = TRUE,
-                     max_iter = Inf, restart = TRUE, omega_l = omega_l)
+                     max_iter = Inf, restart = TRUE, omega_l = omega_l, verbose = TRUE)
     })[3]
   
   # calculate mean/precision signal MSEs
@@ -87,7 +87,7 @@ for (j in 1:nrow(settings)) {
   time <- system.time({
     fit <- mich_tree(tree_data$y, tree_data$tree$edge, L = L, tol = tol, 
                      fit_intercept = TRUE, fit_scale = TRUE, standardize = TRUE, 
-                     max_iter = Inf, restart = TRUE, omega_l = omega_l)
+                     max_iter = Inf, restart = TRUE, omega_l = omega_l, verbose = TRUE)
     })[3]
   
   # calculate mean/precision signal MSEs

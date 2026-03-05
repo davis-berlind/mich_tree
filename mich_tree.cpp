@@ -274,6 +274,14 @@ NumericVector tree_vb(TreeNode* tree,
 
     iter++;
     elbo.push_back(0.0);
+    Rcout << "lambda_0:" << *lambda_0 << ";\n";
+    Rcout << "r_bar:" << r_bar[0] << ";\n";
+    Rcout << "b_bar_l:" << b_bar_l(0,0) << ";\n";
+    Rcout << "omega_bar_l:" << omega_bar_l(0,0) << ";\n";
+    Rcout << "pi_bar_l:" << pi_bar_l(0,0) << ";\n";
+    Rcout << "pi_bar_l:" << pi_bar_l(0,0) << ";\n";
+    Rcout << "log_pi_bar_l:" << log_pi_bar_l(0,0) << ";\n";
+    
     elbo[iter] = elbo_fn(*lambda_0, r_bar, delta, b_bar_l, omega_bar_l, pi_bar_l,
                          log_pi_bar_l, log_pi_l, omega_l, log_omega_l);
     

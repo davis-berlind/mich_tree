@@ -42,8 +42,8 @@ mich_tree <- function(y, edges,
     # difference out mean changes
     y_diff <- diff(y)
     # remove outliers due to big mean changes
-    y_diff_norm <- sqrt(sum(y_diff^2))
-    y_diff <- y_diff[y_diff_norm <= stats::quantile(y_diff_norm, p = 0.75) +  1.5 * stats::IQR(y_diff_norm)]
+    y_diff <- y_diff[y_diff <= stats::quantile(y_diff, p = 0.75) + 1.5 * stats::IQR(y_diff) &
+                       y_diff >= stats::quantile(y_diff, p = 0.25) - 1.5 * stats::IQR(y_diff)]
     lambda_0[1] <- 2.0 / (var(y_diff))
   }
   
