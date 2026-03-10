@@ -3,11 +3,11 @@ source("mich_tree.R")
 Rcpp::sourceCpp("mich_tree.cpp")
 
 # get job id and set seed
-jobid = as.integer(Sys.getenv("SGE_TASK_ID"))
+jobid = 1#as.integer(Sys.getenv("SGE_TASK_ID"))
 set.seed(jobid)
 
 # tree packages
-cp_pkgs <- c("treeSeg", "ape")
+cp_pkgs <- c("treeSeg", "ape", "aricode")
 lapply(cp_pkgs, require, character.only = TRUE)
 
 # significance level
@@ -25,7 +25,7 @@ settings <- data.frame(n = c(rep(100, 2), rep(500, 3), rep(1000, 3)),
 
 cols <- c("method", "n", "L", "min_space", "time", "n_comp", "L_est", 
           "n_detected", "n_covered", "avg_len", "mean_mse",
-          "hausdorff_1", "hausdorff_2")
+          "hausdorff_1", "hausdorff_2", "ARI", "AMI")
 
 # initialize results matrix
 result <- matrix(ncol = length(cols), nrow = 0)
@@ -40,6 +40,7 @@ for (j in 1:nrow(settings)) {
   # generate data
   tree_data <- tree_sim(n, L, min_space, C = 200, sd = 1)
   true_cp <- tree_data$active_nodes
+  true_color <- tip_color(true_cp, tree_data$adj)
   
   # detection threshold
   max_length <- log(n)^(1+delta)
@@ -66,6 +67,8 @@ for (j in 1:nrow(settings)) {
   
   # estimate number of change-points
   L_est <- length(est_cp)
+  # estimate partition
+  est_color <- tip_color(est_cp, tree_data$adj)
   
   # detected true change-points
   detected <- true_cp[true_cp %in% window_fn(est_cp, tree_data$adj, wp = 0.5)]
@@ -79,8 +82,10 @@ for (j in 1:nrow(settings)) {
   result[nrow(result) + 1,"method"] <- "MICH Auto"
   result[nrow(result),-1] <- c(n, L, min_space, time, fit$L, L_est, n_detected,
                                n_covered, avg_len, mean_mse,
-                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree, n), 
-                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree, n))
+                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree), 
+                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree),
+                               ARI(est_color, true_color),
+                               AMI(est_color, true_color))
   
   #### MICH Oracle ####
   # fit model and time process
@@ -104,6 +109,8 @@ for (j in 1:nrow(settings)) {
   
   # estimate number of change-points
   L_est <- length(est_cp)
+  # estimate partition
+  est_color <- tip_color(est_cp, tree_data$adj)
   
   # detected true change-points
   detected <- true_cp[true_cp %in% window_fn(est_cp, tree_data$adj, wp = 0.5)]
@@ -117,37 +124,43 @@ for (j in 1:nrow(settings)) {
   result[nrow(result) + 1,"method"] <- "MICH Ora"
   result[nrow(result),-1] <- c(n, L, min_space, time, fit$L, L_est, n_detected,
                                n_covered, avg_len, mean_mse,
-                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree, n), 
-                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree, n))
+                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree), 
+                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree),
+                               ARI(est_color, true_color),
+                               AMI(est_color, true_color))
   
   #### treeSeg ####
-  # fit model and time process
-  time <- system.time({
-    fit <- treeSeg(tree_data$y, tree_data$tree, alpha = 1 - level, 
-                   fam = "gauss", lengths = "dyadic")
+  if (n == 100 | L <= 2) {
+    # fit model and time process
+    time <- system.time({
+      fit <- treeSeg(tree_data$y, tree_data$tree, alpha = 1 - level, 
+                     fam = "gauss", lengths = "dyadic")
     })[3]
-  
-  # calculate mean/precision signal MSEs
-  mean_mse <- mean((fit$mlP - tree_data$mean_signal)^2)
-  
-  # estimate number of change-points
-  L_est <- fit$numbAN
-  
-  # determine credible sets and change-points
-  est_cp <- fit$mlAN
-  
-  # detected true change-points
-  detected <- true_cp[true_cp %in% window_fn(est_cp, tree_data$adj, wp = 0.5)]
-  n_detected <- length(detected)
-  # number of credible sets that cover a detected change-point
-  n_covered <- ifelse(L_est == 0, 0, sum(detected %in% fit$confSetAN))
-  
-  # store results
-  result[nrow(result) + 1,"method"] <- "treeSeg"
-  result[nrow(result),-1] <- c(n, L, min_space, time, NA, L_est, n_detected,
-                               n_covered, NA, mean_mse,
-                               tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree, n), 
-                               tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree, n))
+    
+    # calculate mean/precision signal MSEs
+    mean_mse <- mean((fit$mlP - tree_data$mean_signal)^2)
+    
+    # estimate number of change-points
+    L_est <- fit$numbAN
+    
+    # determine credible sets and change-points
+    est_cp <- fit$mlAN
+    
+    # detected true change-points
+    detected <- true_cp[true_cp %in% window_fn(est_cp, tree_data$adj, wp = 0.5)]
+    n_detected <- length(detected)
+    # number of credible sets that cover a detected change-point
+    n_covered <- ifelse(L_est == 0, 0, sum(detected %in% fit$confSetAN))
+    
+    # store results
+    result[nrow(result) + 1,"method"] <- "treeSeg"
+    result[nrow(result),-1] <- c(n, L, min_space, time, NA, L_est, n_detected,
+                                 n_covered, NA, mean_mse,
+                                 tree_hausdorff(c(n+1, true_cp), c(n+1, est_cp), tree_data$tree), 
+                                 tree_hausdorff(c(n+1,est_cp), c(n+1,true_cp), tree_data$tree),
+                                 ARI(est_color, true_color),
+                                 AMI(est_color, true_color))
+  }
 }
 
-write.csv(result, paste0("./results/result_",jobid,".csv"), row.names = FALSE)
+write.csv(result, paste0("./results/result_", jobid, ".csv"), row.names = FALSE)
