@@ -3,7 +3,7 @@ source("mich_tree.R")
 Rcpp::sourceCpp("mich_tree.cpp")
 
 # get job id and set seed
-jobid = 1#as.integer(Sys.getenv("SGE_TASK_ID"))
+jobid = as.integer(Sys.getenv("SGE_TASK_ID"))
 set.seed(jobid)
 
 # tree packages

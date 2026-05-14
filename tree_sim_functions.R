@@ -11,12 +11,13 @@ tree_mat <- function(n_leaf, edges) {
   return(adj)
 }
 
-tree_sim <- function(n, L, min_space = 10, C = 40, sd = 1, detect_window) {
+tree_sim <- function(n, L, min_space = 10, C = 40, sd = 1, leafs = TRUE) {
   tree = ape::rtree(n, rooted = TRUE, br = NULL)
   edges <- tree$edge
   adj <- tree_mat(n, edges)
   n_off <- colSums(adj)
   cand <- (n + 2):(2*n - 1)
+  if (leafs) cand <- c(1:n, cand)
   cand <- cand[n_off[cand] >= min_space]
   active_nodes <- c()
   active_color <- rep(0, 2*n - 1)

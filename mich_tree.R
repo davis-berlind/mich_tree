@@ -1,29 +1,27 @@
-mich_tree <- function(y, edges, 
-                      L=0, L_max=length(y)-1, L_auto=FALSE, 
-                      fit_intercept=TRUE, fit_scale=TRUE, standardize=TRUE,
-                      tol=1e-5, max_iter=1e4, verbose=FALSE,
-                      restart=FALSE, increment=1, 
-                      merge_level=0.95, merge_prob=NULL,
-                      pi_l=NULL, omega_l=1e-3) {
+mich_tree <- function(
+    y, edges, 
+    L=0, L_max=length(y)-1, L_auto=FALSE, 
+    fit_intercept=TRUE, fit_scale=TRUE, standardize=TRUE,
+    tol=1e-5, max_iter=1e4, verbose=FALSE,
+    restart=FALSE, increment=1, 
+    merge_level=0.95, merge_prob=NULL,
+    pi_l=NULL, omega_l=1e-3
+  ) {
 
   if (!L_auto) L_max <- L
   
-  # number of leafs
-  n_leaf <- length(y)
+  n_leaf <- length(y) # number of leafs
+  n_node <- n_leaf - 1  # number of internal nodes
   
-  # number of internal nodes
-  n_node <- n_leaf - 1
-  
-  # min prob to keep component when restarting
-  keep_level <- 0.9
-  
+  keep_level <- 0.9 # min prob to keep component when restarting
+   
   # detection threshold
-  delta = 0.5
+  delta <- 0.5
   detect <- ceiling(log(n_node)^(1 + delta))
   
   # merge threshold
   if (is.null(merge_prob)) merge_prob <- detect / n_node^2
-  merge_counter = log(n_node) %/% 2
+  merge_counter <- log(n_node) %/% 2
 
   # min number of increments for auto procedure
   n_search <- max(4, ceiling(log(n_node) / ((1 + restart) * increment)))
