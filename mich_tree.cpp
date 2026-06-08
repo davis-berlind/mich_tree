@@ -19,10 +19,12 @@ struct TreeNode {
 };
 
 // Build the tree from an edge matrix
-TreeNode* buildTree(NumericVector r_bar,
-                    NumericVector delta,
-                    double* lambda,
-                    IntegerMatrix edges) {
+TreeNode* buildTree(
+    NumericVector r_bar,
+    NumericVector delta,
+    double* lambda,
+    IntegerMatrix edges
+) {
 
   int n_leaf = r_bar.length();
   std::unordered_map<int, TreeNode*> nodes;
@@ -63,15 +65,17 @@ TreeNode* buildTree(NumericVector r_bar,
   return nodes[root];
 }
 
-void tree_smcp(TreeNode* node,
-               NumericVector b_bar,
-               NumericVector omega_bar,
-               NumericVector pi_bar,
-               NumericVector log_pi_bar,
-               NumericVector log_pi,
-               double omega_0,
-               int n_leaf,
-               double* log_pi_max) {
+void tree_smcp(
+    TreeNode* node,
+    NumericVector b_bar,
+    NumericVector omega_bar,
+    NumericVector pi_bar,
+    NumericVector log_pi_bar,
+    NumericVector log_pi,
+    double omega_0,
+    int n_leaf,
+    double* log_pi_max
+) {
 
   double b, omega, log_prob;
 
@@ -137,13 +141,15 @@ void tree_smcp(TreeNode* node,
   return;
 }
 
-void mu_bar_update(TreeNode* node,
-                   NumericMatrix mu_bar,
-                   NumericMatrix mu2_bar,
-                   int l,
-                   NumericVector b_bar,
-                   NumericVector omega_bar,
-                   NumericVector pi_bar) {
+void mu_bar_update(
+    TreeNode* node,
+    NumericMatrix mu_bar,
+    NumericMatrix mu2_bar,
+    int l,
+    NumericVector b_bar,
+    NumericVector omega_bar,
+    NumericVector pi_bar
+) {
 
   if (node->left == nullptr && node->right == nullptr) {
     int n_leaf = mu_bar.nrow();
@@ -168,16 +174,18 @@ void mu_bar_update(TreeNode* node,
 }
 
 
-double elbo_fn(double lambda_0,
-               NumericVector r_bar,
-               NumericVector delta,
-               NumericMatrix b_bar_l,
-               NumericMatrix omega_bar_l,
-               NumericMatrix pi_bar_l,
-               NumericMatrix log_pi_bar_l,
-               NumericMatrix log_pi_l,
-               double omega_l,
-               double log_omega_l)  {
+double elbo_fn(
+    double lambda_0,
+    NumericVector r_bar,
+    NumericVector delta,
+    NumericMatrix b_bar_l,
+    NumericMatrix omega_bar_l,
+    NumericMatrix pi_bar_l,
+    NumericMatrix log_pi_bar_l,
+    NumericMatrix log_pi_l,
+    double omega_l,
+    double log_omega_l
+) {
   int L = pi_bar_l.ncol();
   int n_leaf = r_bar.length();
   int n_node = n_leaf - 1;
@@ -195,25 +203,27 @@ double elbo_fn(double lambda_0,
   return elbo;
 }
 
-NumericVector tree_vb(TreeNode* tree,
-                      NumericVector r_bar,
-                      NumericVector delta,
-                      bool fit_intercept,
-                      bool fit_scale,
-                      double tol,
-                      double max_iter,
-                      bool verbose,
-                      double* mu_0,
-                      double* lambda_0,
-                      double omega_l,
-                      NumericMatrix log_pi_l,
-                      NumericMatrix mu_bar_l,
-                      NumericMatrix mu2_bar_l,
-                      NumericMatrix b_bar_l,
-                      NumericMatrix omega_bar_l,
-                      NumericMatrix pi_bar_l,
-                      NumericMatrix log_pi_bar_l) {
-
+NumericVector tree_vb(
+    TreeNode* tree,
+    NumericVector r_bar,
+    NumericVector delta,
+    bool fit_intercept,
+    bool fit_scale,
+    double tol,
+    double max_iter,
+    bool verbose,
+    double* mu_0,
+    double* lambda_0,
+    double omega_l,
+    NumericMatrix log_pi_l,
+    NumericMatrix mu_bar_l,
+    NumericMatrix mu2_bar_l,
+    NumericMatrix b_bar_l,
+    NumericMatrix omega_bar_l,
+    NumericMatrix pi_bar_l,
+    NumericMatrix log_pi_bar_l
+) {
+  
   int n_leaf = r_bar.length(), iter = 0, L = log_pi_bar_l.ncol();
   double log_pi_max, log_omega_l = std::log(omega_l);
   
@@ -237,7 +247,7 @@ NumericVector tree_vb(TreeNode* tree,
       // merge component into mu_0 if root is active
       if (fit_intercept) {
         bool merge_root = true;
-        for (int i=1; i < n_leaf - 1; i++) {
+        for (int i = 1; i < n_leaf - 1; i++) {
           if (pi_bar[i] > pi_bar[0]) {
             merge_root = false;
             break;
@@ -403,13 +413,15 @@ void sibling_merge(TreeNode* node,
   return;
 }
 
-void merge_reset(TreeNode* node,
-                   IntegerVector active,
-                   LogicalVector merged_up,
-                   NumericMatrix b_bar,
-                   NumericMatrix omega_bar,
-                   NumericMatrix pi_bar,
-                   NumericMatrix log_pi_bar) {
+void merge_reset(
+    TreeNode* node,
+    IntegerVector active,
+    LogicalVector merged_up,
+    NumericMatrix b_bar,
+    NumericMatrix omega_bar,
+    NumericMatrix pi_bar,
+    NumericMatrix log_pi_bar
+  ) {
 
   if (node->left == nullptr && node->right == nullptr) return;
 
@@ -523,23 +535,25 @@ void merge_reset(TreeNode* node,
 }
 
 // [[Rcpp::export]]
-List mich_tree_cpp(NumericVector y,
-               IntegerMatrix edges,
-               int L,
-               bool fit_intercept,
-               bool fit_scale,
-               double tol,
-               double max_iter,
-               bool verbose,
-               NumericMatrix log_pi_l,
-               double omega_l,
-               NumericVector mu_0_vec,
-               NumericVector lambda_0_vec,
-               NumericMatrix b_bar_l,
-               NumericMatrix omega_bar_l,
-               NumericMatrix pi_bar_l,
-               NumericMatrix log_pi_bar_l) {
-
+List tree_mich_cpp(
+    NumericVector y,
+    IntegerMatrix edges,
+    int L,
+    bool fit_intercept,
+    bool fit_scale,
+    double tol,
+    double max_iter,
+    bool verbose,
+    NumericMatrix log_pi_l,
+    double omega_l,
+    NumericVector mu_0_vec,
+    NumericVector lambda_0_vec,
+    NumericMatrix b_bar_l,
+    NumericMatrix omega_bar_l,
+    NumericMatrix pi_bar_l,
+    NumericMatrix log_pi_bar_l
+) {
+  
   int n_leaf = y.length();
   int n_node = n_leaf - 1;
 

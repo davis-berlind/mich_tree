@@ -12,7 +12,7 @@ tree_mat <- function(n_leaf, edges) {
 }
 
 tree_sim <- function(n, L, min_space = 10, C = 40, sd = 1, leafs = TRUE) {
-  tree = ape::rtree(n, rooted = TRUE, br = NULL)
+  tree = ape::rcoal(n, rooted = TRUE)
   edges <- tree$edge
   adj <- tree_mat(n, edges)
   n_off <- colSums(adj)

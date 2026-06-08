@@ -53,8 +53,14 @@ void eigen_update(
   if (node->left == nullptr && node->right == nullptr) {
     eigen_val = omega_0 + lambda;
   } else {
-    eigen_update(node->left, lambda, Lambda_bar_log_det, Lambda_bar_trace, mean_wts, sandwich_wts, omega_0);
-    eigen_update(node->right, lambda, Lambda_bar_log_det, Lambda_bar_trace, mean_wts, sandwich_wts, omega_0);
+    eigen_update(
+      node->left, lambda, Lambda_bar_log_det, Lambda_bar_trace, 
+      mean_wts, sandwich_wts, omega_0
+    );
+    eigen_update(
+      node->right, lambda, Lambda_bar_log_det, Lambda_bar_trace, 
+      mean_wts, sandwich_wts, omega_0
+    );
     eigen_val = node->left->eigen_val + node->right->eigen_val - omega_0; // omega_0 gets double counted
   }
   
@@ -125,6 +131,38 @@ TreeNode* buildTree(
   return nodes[root];
 }
 
+void log_tree_mean_prior_rec(
+    TreeNode* node,
+    int d,
+    double log_n_leaf, 
+    NumericVector log_prior
+) {
+  double log_n_i_leaf = std::log(node->n_leaf);
+  
+  log_prior[node->id] = 0.5 * d * (log_n_i_leaf - log_n_leaf);
+  if (node->left == nullptr && node->right == nullptr) return;
+  else {
+    log_tree_mean_prior_rec(node->left, d, log_n_leaf, log_prior);
+    log_tree_mean_prior_rec(node->right, d, log_n_leaf, log_prior);
+  }
+}
+
+// [[Rcpp::export]]
+NumericVector log_tree_mean_prior(int d, IntegerMatrix edges) {
+  double omega_0 = 0.0;
+  NumericVector lambda (d);
+  
+  TreeNode* tree = buildTree(edges, lambda, omega_0);
+  
+  int n_leaf = tree->n_leaf;
+  double log_n_leaf = std::log(n_leaf);
+  NumericVector log_prior(2 * n_leaf - 1);
+  
+  log_tree_mean_prior_rec(tree, d, log_n_leaf, log_prior);
+  
+  return log_prior;
+}
+
 void mu_bar_rec(
     TreeNode* node,
     NumericVector lambda,
@@ -173,8 +211,14 @@ void tree_multi_smcp_rec(
   if (node->left == nullptr && node->right == nullptr) {
     node->QTy = QTy(node->id, _);
   } else {
-    tree_multi_smcp_rec(node->left, QTy, log_det, mean_wts, sandwich_wts, QTb_bar, pi_bar, log_pi_bar, log_pi, log_pi_max);
-    tree_multi_smcp_rec(node->right, QTy, log_det, mean_wts, sandwich_wts, QTb_bar, pi_bar, log_pi_bar, log_pi, log_pi_max);
+    tree_multi_smcp_rec(
+      node->left, QTy, log_det, mean_wts, sandwich_wts, QTb_bar, pi_bar, 
+      log_pi_bar, log_pi, log_pi_max
+    );
+    tree_multi_smcp_rec(
+      node->right, QTy, log_det, mean_wts, sandwich_wts, QTb_bar, pi_bar, 
+      log_pi_bar, log_pi, log_pi_max
+    );
     node->QTy = node->left->QTy + node->right->QTy;
   }
   
@@ -209,7 +253,10 @@ List tree_multi_smcp(
   NumericMatrix QTmu_bar (n_leaf, d);
   NumericVector muTLmu_bar (n_leaf, 0.0);
   
-  tree_multi_smcp_rec(root, QTy, log_det, mean_wts, sandwich_wts, QTb_bar, pi_bar, log_pi_bar, log_pi, &log_pi_max);
+  tree_multi_smcp_rec(
+    root, QTy, log_det, mean_wts, sandwich_wts, QTb_bar, pi_bar, log_pi_bar, 
+    log_pi, &log_pi_max
+  );
   
   // rescale probabilities 
   double tot = 0;
@@ -251,9 +298,6 @@ double tree_multi_elbo(
   int d = QTr_bar.ncol();
   int L = post_params.length();
 
-  List post_params_l;
-  NumericMatrix QTmu_bar_l (n_leaf, d);
-  NumericVector muTLmu_bar_l (n_leaf);
   NumericVector pi_bar_l (n_node);
   NumericVector log_pi_bar_l (n_node);
   NumericMatrix QTb_bar_l (n_node, d);
@@ -268,9 +312,9 @@ double tree_multi_elbo(
   }
 
   for (int l = 0; l < L; l++) {
-    post_params_l = post_params[l];
-    QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
-    muTLmu_bar_l = as<NumericVector>(post_params_l["muTLmu_bar"]);
+    List post_params_l = post_params[l];
+    NumericMatrix QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
+    NumericVector muTLmu_bar_l = as<NumericVector>(post_params_l["muTLmu_bar"]);
     for (int i = 0; i < n_leaf; i++) {
       elbo -= muTLmu_bar_l[i];
       for (int j = 0; j < d; j++) {
@@ -283,11 +327,11 @@ double tree_multi_elbo(
     log_pi_bar_l = as<NumericVector>(post_params_l["log_pi_bar"]);
     QTb_bar_l = as<NumericMatrix>(post_params_l["QTb_bar"]);
     for (int i = 0; i < n_node; i++) {
-      if (pi_bar_l[i] > 1e-20) elbo += 2.0 * pi_bar_l[i] * (log_pi_l(i,l) - log_pi_bar_l[i]);
-      elbo += pi_bar_l[i] * (Lambda_bar_log_det[i] - d_log_omega);
-      elbo -= pi_bar_l[i] * (Lambda_bar_trace[i] / omega); // TODO cache divide by omega
+      if (pi_bar_l[i] > 1e-20) elbo -= 2.0 * pi_bar_l[i] * (log_pi_bar_l[i] - log_pi_l(i,l));
+      elbo -= pi_bar_l[i] * (Lambda_bar_log_det[i] - d_log_omega);
+      elbo -= pi_bar_l[i] * (omega / Lambda_bar_trace[i] - d); // TODO cache divide by omega
       for (int j = 0; j < d; j++) {
-        elbo -= omega * QTb_bar_l(i, j) * QTb_bar_l(i, j);
+        elbo -= pi_bar_l[i] * omega * QTb_bar_l(i, j) * QTb_bar_l(i, j);
       }
     }
   }
@@ -356,7 +400,7 @@ void merge_reset_rec(
           active[l] = -1;
           List post_params_l = post_params[l];
           post_params_l["QTb_bar"] = NumericMatrix(n_node, d);
-          post_params_l["pi_bar"] = NumericVector(n_node, 1.0 / n_node);;
+          post_params_l["pi_bar"] = NumericVector(n_node, 1.0 / n_node);
           post_params_l["log_pi_bar"] = NumericVector(n_node, 0.0);
           post_params[l] = post_params_l;
         }
@@ -373,6 +417,12 @@ void merge_reset_rec(
       QTb_bar_l(node->right->id, _) = QTb_bar_l(node->id, _);
       QTb_bar_l(node->id, _) = QTb_tmp;
       post_params_l["QTb_bar"] = QTb_bar_l;
+      
+      List post_params_left = post_params[left_dex];
+      NumericMatrix QTb_bar_left = as<NumericMatrix>(post_params_left["QTb_bar"]);
+      QTb_bar_left(node->left->id, _) = QTb_bar_left(node->left->id, _) - QTb_tmp;
+      post_params_left["QTb_bar"] = QTb_bar_left;
+      post_params[left_dex] = post_params_left;
       
       NumericVector pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
       double pi_tmp = pi_bar_l[node->right->id];
@@ -409,6 +459,23 @@ void merge_reset_rec(
   return;
 }
 
+List active_reorder(List post_params, LogicalVector active) {
+  int L = post_params.size();
+  List reordered(L);
+  int front = 0;
+  for (int l = 0; l < L; l++) {
+    if (active[l] < 0) {
+      reordered[front++] = post_params[l];
+    }
+  }
+  for (int l = 0; l < L; l++) {
+    if (active[l] >= 0) {
+      reordered[front++] = post_params[l];
+    }
+  }
+  return reordered;
+}
+
 void merge_reset(
     TreeNode* root,
     NumericMatrix QTr_bar,
@@ -424,16 +491,10 @@ void merge_reset(
   IntegerVector active(L);
   LogicalVector merged_up(L, false);
   
-  List post_params_l;
-  NumericVector pi_bar_l (n_node);
-  NumericMatrix QTb_bar_l (n_node, d);
-  NumericMatrix QTmu_bar_l (n_leaf, d);
-  NumericVector muTLmu_bar_l (n_leaf, 0.0);
-  
   for (int l = 0; l < L; l++) {
     double pi_max = 0.0;
-    post_params_l = post_params[l];
-    pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
+    List post_params_l = post_params[l];
+    NumericVector pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
     for (int i=0; i < n_node; i++) {
       if (pi_bar_l[i] > pi_max) {
         pi_max = pi_bar_l[i];
@@ -443,13 +504,14 @@ void merge_reset(
   }
   
   merge_reset_rec(root, n_node, d, active, merged_up, post_params); 
-
+  post_params = active_reorder(post_params, merged_up);
+  
   // update mean params
   for (int l = 0; l < L; l++) {
-    post_params_l = post_params[l];
-    QTb_bar_l = as<NumericMatrix>(post_params_l["QTb_bar"]);
-    QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
-    pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
+    List post_params_l = post_params[l];
+    NumericMatrix QTb_bar_l = as<NumericMatrix>(post_params_l["QTb_bar"]);
+    NumericMatrix QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
+    NumericVector pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
     
     for (int i = 0; i < n_leaf; i++) {
       for (int j = 0; j < d; j++) {
@@ -457,10 +519,13 @@ void merge_reset(
       }
     }
     
+    NumericVector muTLmu_bar_l (n_leaf);
     root->mu.fill(0.0); // zero out mean before calling recursive update
     root->muTmu = 0.0;
+    mu_bar_rec(
+      root, lambda, mean_wts, QTmu_bar_l, muTLmu_bar_l, QTb_bar_l, pi_bar_l
+    );
     
-    mu_bar_rec(root, lambda, mean_wts, QTmu_bar_l, muTLmu_bar_l, QTb_bar_l, pi_bar_l);
     post_params_l["QTmu_bar"] = QTmu_bar_l;
     post_params_l["muTLmu_bar"] = muTLmu_bar_l;
     post_params[l] = post_params_l;
@@ -496,11 +561,9 @@ NumericVector mat_tree_vb(
 ) {
   
   int n_leaf = QTr_bar.nrow();
+  int n_node = 2 * n_leaf - 1;
   int d = QTr_bar.ncol();
   double d_log_omega_l = d * std::log(omega_l);
-  
-  List post_params_l;
-  NumericMatrix QTmu_bar_l (n_leaf, d);
   
   // initialize ELBO
   std::vector<double> elbo;
@@ -508,9 +571,11 @@ NumericVector mat_tree_vb(
   elbo.push_back(R_NegInf);
   
   // vb algorithm
-  int iter = 0;
+  int iter = 1;
   bool scale_swich = false;
-  while (iter < max_iter) {
+  bool merge_root = false;
+  
+  while (iter <= max_iter) {
     // update covariance matrix
     if (scale_swich){
       // todo
@@ -518,8 +583,8 @@ NumericVector mat_tree_vb(
     
     for (int l = 0; l < L; l++) {
       // add back lth partial mean
-      post_params_l = post_params[l];
-      QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
+      List post_params_l = post_params[l];
+      NumericMatrix QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
       for (int i = 0; i < n_leaf; i++) {
         for (int j = 0; j < d; j++) {
           QTr_bar(i, j) += QTmu_bar_l(i, j);
@@ -527,11 +592,58 @@ NumericVector mat_tree_vb(
       }
       
       // update posterior parameters
-      post_params_l = tree_multi_smcp(tree, lambda, QTr_bar, Lambda_bar_log_det, mean_wts, sandwich_wts, log_pi_l(_,l));
+      post_params_l = tree_multi_smcp(
+        tree, lambda, QTr_bar, Lambda_bar_log_det, mean_wts, sandwich_wts, 
+        log_pi_l(_,l)
+      );
+      
+      QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
+      
+      // merge component into mu_0 if root is active
+      if (fit_intercept) {
+        merge_root = true;
+        NumericVector pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
+        for (int i = 0; i < n_node; i++) {
+          if (pi_bar_l[i] > pi_bar_l[tree->id]) {
+            merge_root = false;
+            break;
+          }
+        }
+
+        if (merge_root) {
+          NumericMatrix QTb_bar_l = as<NumericMatrix>(post_params_l["QTb_bar"]);
+          for (int j = 0; j < d; j++) {
+            double delta = 0.0;
+            for (int i = 0; i < n_node; i++) {
+              delta += QTb_bar_l(i, j) * pi_bar_l[i];
+            }
+            QTmu_0[j] += delta;
+            QTr_bar(_, j) = QTr_bar(_, j) - Rcpp::rep(delta, n_leaf);
+          }
+
+          QTb_bar_l.fill(0.0);
+          pi_bar_l.fill(1.0 / n_node);
+
+          post_params_l["QTb_bar"] = QTb_bar_l;
+          post_params_l["pi_bar"] = pi_bar_l;
+          post_params_l["log_pi_bar"] = NumericVector(n_node, 0.0);
+
+          NumericVector muTLmu_bar_l (n_leaf);
+          tree->mu.fill(0.0); // zero out mean before calling recursive update
+          tree->muTmu = 0.0;
+          mu_bar_rec(
+            tree, lambda, mean_wts, QTmu_bar_l, muTLmu_bar_l, QTb_bar_l, 
+            pi_bar_l
+          );
+          
+          post_params_l["QTmu_bar"] = QTmu_bar_l;
+          post_params_l["muTLmu_bar"] = muTLmu_bar_l;
+        }
+      }
+      
       post_params[l] = post_params_l;
       
       // subtract lth partial mean
-      QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
       for (int i = 0; i < n_leaf; i++) {
         for (int j = 0; j < d; j++) {
           QTr_bar(i, j) -= QTmu_bar_l(i, j);
@@ -555,18 +667,23 @@ NumericVector mat_tree_vb(
     }
     
     // calculate elbo
-    iter++;
     elbo.push_back(0.0);
-    elbo[iter] = tree_multi_elbo(lambda, QTr_bar, post_params, Lambda_bar_log_det, Lambda_bar_trace, log_pi_l, omega_l, d_log_omega_l);
+    elbo[iter] = tree_multi_elbo(
+      lambda, QTr_bar, post_params, Lambda_bar_log_det, Lambda_bar_trace, 
+      log_pi_l, omega_l, d_log_omega_l
+    );
     
-    if (verbose & (iter % 1000 == 0)) Rcout << "Iteration: " << iter << " elbo: " << elbo[iter] << "\n";
+    if (verbose & (iter % 1000 == 0)) {
+      Rcout << "Iteration: " << iter << " elbo: " << elbo[iter] << "\n";
+    }
     if (std::abs((elbo[iter] - elbo[iter - 1]) / elbo[iter - 1]) < tol) break;
+    iter++;
   }
   return wrap(elbo);
 }
 
 // [[Rcpp::export]]
-List mat_mich_tree_cpp(
+List tree_mich_matrix_cpp(
     NumericMatrix y, 
     IntegerMatrix edges,
     int L, 
@@ -589,19 +706,16 @@ List mat_mich_tree_cpp(
 
   // construct tree
   TreeNode* tree = buildTree(edges, lambda, omega_l);
-  
-  List post_params_l;
-  NumericMatrix QTmu_bar_l (n_leaf, d);
   NumericVector QTmu_0 (d);
-  NumericVector pi_bar_l (n_node);
   
   // initialize Lambda summary params
-  NumericVector Lambda_bar_log_det (n_node);
-  NumericVector Lambda_bar_trace (n_node);
-  NumericMatrix mean_wts (n_node, d);
-  NumericMatrix sandwich_wts (n_node, d);
+  NumericVector Lambda_bar_log_det (n_node), Lambda_bar_trace (n_node);
+  NumericMatrix mean_wts (n_node, d), sandwich_wts (n_node, d);
   
-  eigen_update(tree, lambda, Lambda_bar_log_det, Lambda_bar_trace, mean_wts, sandwich_wts, omega_l);
+  eigen_update(
+    tree, lambda, Lambda_bar_log_det, Lambda_bar_trace, mean_wts, sandwich_wts, 
+    omega_l
+  );
   
   // initialize mean residual
   NumericMatrix r_bar = clone(y);
@@ -618,8 +732,22 @@ List mat_mich_tree_cpp(
   }
   
   for (int l = 0; l < L; l++) {
-    post_params_l = post_params[l];
-    QTmu_bar_l = as<NumericMatrix>(post_params_l["QTmu_bar"]);
+    List post_params_l = post_params[l];
+    NumericMatrix QTb_bar_l = as<NumericMatrix>(post_params_l["QTb_bar"]);
+    NumericVector pi_bar_l = as<NumericVector>(post_params_l["pi_bar"]);
+    NumericMatrix QTmu_bar_l (n_leaf, d);
+    NumericVector muTLmu_bar_l (n_leaf);
+    
+    tree->mu.fill(0.0); // zero out mean before calling recursive update
+    tree->muTmu = 0.0;
+    mu_bar_rec(
+      tree, lambda, mean_wts, QTmu_bar_l, muTLmu_bar_l, QTb_bar_l, pi_bar_l
+    );
+    
+    post_params_l["QTmu_bar"] = QTmu_bar_l;
+    post_params_l["muTLmu_bar"] = muTLmu_bar_l;
+    post_params[l] = post_params_l;
+    
     for (int i = 0; i < n_leaf; i++) {
       for (int j = 0; j < d; j++) {
         QTr_bar(i, j) -= QTmu_bar_l(i, j);
@@ -629,10 +757,10 @@ List mat_mich_tree_cpp(
   
   // vb algorithm
   NumericVector elbo = mat_tree_vb(
-    QTr_bar, tree, L, 
-    QTmu_0, lambda, Q, 
-    fit_intercept, fit_scale, tol, max_iter,verbose,
-    log_pi_l, omega_l, 
+    QTr_bar, tree, L,
+    QTmu_0, lambda, Q,
+    fit_intercept, fit_scale, tol, max_iter, verbose,
+    log_pi_l, omega_l,
     post_params,
     Lambda_bar_log_det, Lambda_bar_trace, mean_wts, sandwich_wts
   );
@@ -640,28 +768,30 @@ List mat_mich_tree_cpp(
   merge_reset(tree, QTr_bar, post_params, lambda, mean_wts);
   
   NumericVector elbo_merged = mat_tree_vb(
-    QTr_bar, tree, L, 
-    QTmu_0, lambda, Q, 
-    fit_intercept, fit_scale, tol, max_iter,verbose,
-    log_pi_l, omega_l, 
+    QTr_bar, tree, L,
+    QTmu_0, lambda, Q,
+    fit_intercept, fit_scale, tol, max_iter, verbose,
+    log_pi_l, omega_l,
     post_params,
     Lambda_bar_log_det, Lambda_bar_trace, mean_wts, sandwich_wts
   );
   
-  bool converged = (elbo_merged.length() < max_iter);
+  //merge_reset(tree, QTr_bar, post_params, lambda, mean_wts);
+  
+  bool converged = (elbo_merged.length() <= max_iter);
   
   for (int i = 0; i < elbo_merged.length(); i++) {
     elbo.push_back(elbo_merged[i]);
   }
-  
+    
   // correlated intercept
   for (int i = 0; i < d; i++) {
     mu_0[i] = 0.0;
     for (int j = 0; j < d; j++) {
-      mu_0[i] += QTmu_0[j] * Q(j,i);
+      mu_0[i] += Q(i, j) * QTmu_0[j];
     }
   }
-  
+
   // creating lists of posterior parameters
   List result = List::create(
     _["L"] = L,
@@ -669,6 +799,7 @@ List mat_mich_tree_cpp(
     _["lambda"] = lambda,
     _["Q"] = Q,   
     _["post_params"] = post_params,
+    _["residual"] = QTr_bar,
     _["elbo"] = elbo,
     _["converged"] = converged
   );

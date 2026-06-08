@@ -1,4 +1,4 @@
-mich_tree <- function(
+tree_mich_vector <- function(
     y, edges, 
     L=0, L_max=length(y)-1, L_auto=FALSE, 
     fit_intercept=TRUE, fit_scale=TRUE, standardize=TRUE,
@@ -58,11 +58,12 @@ mich_tree <- function(
   #### fit model and merge components ####
   merged <- FALSE # flag indicating components have been merged
   while (!merged) {
-    fit <- mich_tree_cpp(y, edges, L, fit_intercept, fit_scale, tol, max_iter,
-                         verbose = verbose & !L_auto,
-                         log_pi_l, omega_l, mu_0, lambda_0,
-                         b_bar_l, omega_bar_l, pi_bar_l, log_pi_bar_l)
-    
+    fit <- tree_mich_cpp(
+      y, edges, L, fit_intercept, fit_scale, tol, max_iter,
+      verbose = verbose & !L_auto,
+      log_pi_l, omega_l, mu_0, lambda_0,
+      b_bar_l, omega_bar_l, pi_bar_l, log_pi_bar_l
+    )
     merged <- TRUE
     refit <- TRUE
     
@@ -156,7 +157,7 @@ mich_tree <- function(
       }
 
       # fit incremented model
-      fit_new <- mich_tree_cpp(y, edges, L, fit_intercept, fit_scale, tol, max_iter,
+      fit_new <- tree_mich_cpp(y, edges, L, fit_intercept, fit_scale, tol, max_iter,
                                verbose = FALSE, log_pi_l, omega_l, mu_0, lambda_0,
                                b_bar_l, omega_bar_l, pi_bar_l, log_pi_bar_l)
 
@@ -231,7 +232,7 @@ mich_tree <- function(
         }
         
         while (!merged & L > 0) {
-          fit <- mich_tree_cpp(y, edges, L, fit_intercept, fit_scale, tol, max_iter,
+          fit <- tree_mich_cpp(y, edges, L, fit_intercept, fit_scale, tol, max_iter,
                                verbose = FALSE, log_pi_l, omega_l, mu_0, lambda_0,
                                b_bar_l, omega_bar_l, pi_bar_l, log_pi_bar_l)
 
